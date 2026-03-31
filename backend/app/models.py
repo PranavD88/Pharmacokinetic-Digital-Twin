@@ -182,7 +182,13 @@ class AcceptedSimulation(SQLModel, table=True):
     __table_args__ = (
         {"sqlite_autoincrement": True},
     )
-
+class ITUser(SQLModel, table=True):
+    id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str
+    email: EmailStr = Field(unique=True, index=True, max_length=255)
+    password: str = Field(min_length=8, max_length=40)
+    role: str = Field(default="it")
+    
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
