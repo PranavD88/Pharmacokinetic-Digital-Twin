@@ -24,7 +24,7 @@ class Clinician(SQLModel, table=True):
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    password: str = Field(min_length=8, max_length=40)
+    password: str = Field(min_length=8, max_length=255)
     last_login: Optional[datetime] = Field(default=None)
     last_simulation_at: Optional[datetime] = Field(default=None)
 
@@ -186,7 +186,7 @@ class ITUser(SQLModel, table=True):
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    password: str = Field(min_length=8, max_length=40)
+    password: str = Field(min_length=8, max_length=255)
     role: str = Field(default="it")
     
 class User(SQLModel, table=True):

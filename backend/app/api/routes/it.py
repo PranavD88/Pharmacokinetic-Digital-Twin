@@ -45,7 +45,7 @@ def create_clinician(body: CreateClinicianRequest, session: Session = Depends(ge
     existing = session.exec(select(Clinician).where(Clinician.email == body.email)).first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already exists")
-    clinician = Clinician(name=body.name, email=body.email, password=body.password)
+    clinician = Clinician(name=body.name, email=body.email, password=hashPassword(body.password))
     session.add(clinician)
     session.commit()
     session.refresh(clinician)

@@ -416,7 +416,7 @@ export default function Simulation() {
       await api.deleteMedication(selectedMed.name);
       const refreshed = await api.listSimulationMedications();
       setMedications(refreshed);
-      setResult(null);
+      setResults([]);
       setWindowReview(null);
       if (refreshed.length > 0) {
         setSelectedMedId(refreshed[0].id);

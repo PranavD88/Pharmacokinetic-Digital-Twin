@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_ME")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or os.getenv("FERNET_KEY") or "CHANGE_ME"
 ALGORITHM = "HS256"
 EXPIRE_MINUTES = 60
 

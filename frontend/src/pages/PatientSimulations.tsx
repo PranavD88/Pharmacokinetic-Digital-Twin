@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { api, type SharedSimulationDetail, type SharedSimulationSummary } from "../api";
+import Navbar from "./Navbar";
 import { downloadSimulationPDF } from "./SimulationPDFExport";
 
 export default function PatientSimulations() {
