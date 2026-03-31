@@ -19,6 +19,9 @@ type Patient = {
   serum_creatinine_mg_dl?: number | string | null;
   creatinine_clearance_ml_min?: number | string | null;
   ckd_stage?: string | null;
+
+  last_login?: string | null;
+  last_simulation_at?: string | null;
 };
 
 export default function EditPatient() {
@@ -39,6 +42,9 @@ export default function EditPatient() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
+  const [lastLogin, setLastLogin] = useState("");
+  const [lastSimulation, setLastSimulation] = useState("");
+
   useEffect(() => {
     if (!id) {
       setErr("No patient ID provided.");
@@ -49,6 +55,13 @@ export default function EditPatient() {
       .getPatientById(id)
       .then((p: Patient) => {
         setPatient(p);
+
+        setLastLogin(
+          p.last_login ? new Date(p.last_login).toLocaleString() : "N/A"
+        );
+        setLastSimulation(
+          p.last_simulation_at ? new Date(p.last_simulation_at).toLocaleString() : "N/A"
+        );
 
         const name =
           (p.full_name ?? undefined) ||
@@ -117,6 +130,13 @@ export default function EditPatient() {
           <p style={{ marginBottom: "0.5rem" }}>
             Email: <strong>{patient.email}</strong>
           </p>
+        )}
+
+        {patient && (
+          <div style={{ marginBottom: "1rem" }}>
+            <p>Last Login: <strong>{lastLogin}</strong></p>
+            <p>Last Simulation: <strong>{lastSimulation}</strong></p>
+          </div>
         )}
 
         <input

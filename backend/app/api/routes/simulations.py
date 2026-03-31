@@ -280,6 +280,10 @@ def run_simulation(
     session.add(sim)
     session.commit()
     session.refresh(sim)
+    
+    pat.last_simulation_at = datetime.now(timezone.utc)
+    session.add(pat)
+    session.commit()
 
     chart_times = times_hr[:2000]
     chart_conc = conc_mg_per_L[:2000]

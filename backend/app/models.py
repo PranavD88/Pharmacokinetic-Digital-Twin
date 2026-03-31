@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlmodel import SQLModel, Field, Column, Relationship
 from pydantic import EmailStr, BaseModel
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, DateTime
 
 
 class Test(SQLModel, table=True):
@@ -182,3 +183,11 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
     hashedPassword: str
+    last_login = Column(DateTime, nullable=True)
+    last_simulation_at = Column(DateTime, nullable=True)
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    last_login: Optional[datetime] = None
+    last_simulation_at: Optional[datetime] = None
