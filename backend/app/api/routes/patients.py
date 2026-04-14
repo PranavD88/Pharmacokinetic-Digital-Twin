@@ -17,6 +17,11 @@ from ...models import (
 )
 from ...core.security import encryptData, decryptData
 
+from datetime import datetime, timedelta
+import random
+from ...models import User
+from ...core.security import encryptData, decryptData
+from ...email import send_email
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -315,6 +320,39 @@ def create_patient_basic(body: PatientCreate, session: Session = Depends(get_ses
     _sync_conditions(session, p.id, body.conditions)
     _sync_current_medications(session, p.id, body.current_medications)
     session.commit()
+
+    otp = str(random.randint(100000, 999999))
+
+    users = session.exec(select(User)).all()
+    user = None
+
+    for u in users:
+        try:
+            if decryptData(u.email) == body.email:
+                user = u
+                break
+        except:
+            continue
+
+    if not user:
+        user = User(
+            email=p.email,
+            hashedPassword=""
+        )
+        session.add(user)
+
+    user.otp = otp
+    user.otp_expires = datetime.utcnow() + timedelta(minutes=10)
+    user.is_first_login = True
+
+    session.add(user)
+    session.commit()
+
+    send_email(
+        decryptData(p.email),
+        "Your Patient Account OTP",
+        f"Your one-time password is: {otp}\n\nIt expires in 10 minutes."
+    )
 
     return decrypt_patient(session, p)
 

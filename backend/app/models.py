@@ -17,7 +17,7 @@ class Test(SQLModel, table=True):
 
 class LoginRequest(BaseModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    password: str = Field(min_length=8, max_length=40)
+    password: str = Field(min_length=6, max_length=40)
 
 
 class Clinician(SQLModel, table=True):
@@ -195,6 +195,9 @@ class User(SQLModel, table=True):
     hashedPassword: str
     last_login: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
     last_simulation_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    otp: Optional[str] = None
+    otp_expires: Optional[datetime] = None
+    is_first_login: bool = True
 
 class UserResponse(BaseModel):
     id: int
