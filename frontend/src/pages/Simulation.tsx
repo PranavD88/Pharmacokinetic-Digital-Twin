@@ -314,12 +314,23 @@ export default function Simulation() {
 
   const handleAccept = async (sim: SimulationResult) => {
     try {
-      await fetch(
+      /*await fetch(
         `/api/sims/accept?patient_id=${sim.patient_id}&medication_id=${sim.medication_id}&simulation_id=${sim.id}`,
        {
           method: "POST",
         }
-      );
+      );*/
+      await fetch("http://localhost:8000/sims/accept", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          patient_id: sim.patient_id,
+          medication_id: sim.medication_id,
+          simulation_id: sim.id,
+        }),
+      });
 
       alert("Simulation accepted!");
     } catch (error) {

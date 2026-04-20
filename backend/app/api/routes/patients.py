@@ -342,7 +342,7 @@ def create_patient_basic(body: PatientCreate, session: Session = Depends(get_ses
         session.add(user)
 
     user.otp = otp
-    user.otp_expires = datetime.utcnow() + timedelta(minutes=10)
+    user.otp_expires = None
     user.is_first_login = True
 
     session.add(user)
@@ -351,7 +351,7 @@ def create_patient_basic(body: PatientCreate, session: Session = Depends(get_ses
     send_email(
         decryptData(p.email),
         "Your Patient Account OTP",
-        f"Your one-time password is: {otp}\n\nIt expires in 10 minutes."
+        f"Your one-time password is: {otp}\n\n"
     )
 
     return decrypt_patient(session, p)

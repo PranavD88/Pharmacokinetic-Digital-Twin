@@ -6,6 +6,8 @@ import BasicInfo from "./pages/BasicInfo";
 import PatientInfo from "./pages/PatientInfo";
 import Simulation from "./pages/Simulation";
 import PatientSimulations from "./pages/PatientSimulations";
+import SetPassword from "./pages/SetPassword";
+import Verify2FA from "./pages/Verify2FA";
 
 function Shell() {
   return (
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/info" element={<PatientInfo />} />
           <Route path="/simulate" element={<Simulation />} />
           <Route path="/patient/simulations" element={<PatientSimulations />} />
+          <Route path="/patient-login/set-password" element={<SetPassword />} />
+          <Route path="/patient-login/verify-2fa" element={<Verify2FA />} />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Route>

@@ -10,11 +10,24 @@ export default function PatientLogin() {
 
   async function onSignIn() {
     setErr("");
+
     try {
       const res = await api.patientLogin(email, password);
-      localStorage.setItem("patient_token", res.access_token);
-      localStorage.setItem("patient_email", email.trim().toLowerCase());
-      nav("/patient/simulations");
+
+      if ("requires_otp" in res && res.requires_otp === true) {
+        localStorage.setItem("patient_email", email.trim().toLowerCase());
+        nav("/patient-login/verify-2fa");
+        return;
+      }
+
+      if ("access_token" in res && res.access_token) {
+        localStorage.setItem("patient_token", res.access_token);
+        localStorage.setItem("patient_email", email.trim().toLowerCase());
+        nav("/patient/simulations");
+        return;
+      }
+
+      setErr("Unexpected response from server");
     } catch (e: any) {
       setErr(String(e));
     }

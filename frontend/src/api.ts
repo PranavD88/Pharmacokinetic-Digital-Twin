@@ -114,6 +114,19 @@ export type WindowReview = {
 
 // API object
 
+//potential new code
+export type PatientLoginResponse =
+  | {
+      access_token: string;
+      email: string;
+    }
+  | {
+      requires_otp: true;
+      email: string;
+      status: "otp_sent";
+      firstLogin: boolean;
+    };
+
 export const api = {
   // Clinicians
   login: (email: string, password: string) =>
@@ -127,7 +140,10 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-    }).then(J) as Promise<{ access_token: string; token_type: string }>,
+    }).then(J) as Promise<
+      | { requires2FA: true; email: string; message: string }
+      | { access_token: string; token_type: string }
+    >,
 
   // Patients
   listPatients: () => fetch(`${BASE}/patients/`).then(J),

@@ -198,6 +198,9 @@ class User(SQLModel, table=True):
     otp: Optional[str] = None
     otp_expires: Optional[datetime] = None
     is_first_login: bool = True
+    phone_otp: str | None = None
+    phone_otp_expires: datetime | None = None
+    is_2fa_verified: bool = False
 
 class UserResponse(BaseModel):
     id: int
