@@ -14,7 +14,7 @@ export default function Login() {
       await api.login(email, password);
       localStorage.setItem("clinician_email", email.trim().toLowerCase());
       nav("/choose");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setErr(String(e));
     }
   }

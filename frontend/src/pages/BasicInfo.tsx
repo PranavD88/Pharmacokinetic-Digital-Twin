@@ -21,23 +21,30 @@ export default function BasicInfo() {
       if (!p?.name && p?.full_name) setName(p.full_name);
       if (!p?.number && p?.phone) setPhone(p.phone);
     } catch {
+      return;
     }
   }
 
   async function onNext() {
     setErr("");
-    localStorage.setItem("patient_email", email || "");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setErr("Email is required.");
+      return;
+    }
+    localStorage.setItem("patient_email", normalizedEmail);
 
     try {
       if (isExisting) {
         // Update basic fields if provided
-        if (email && (full_name || phone)) {
+        if (full_name || phone) {
           try {
-            await api.updatePatientBody(email, {
+            await api.updatePatientBody(normalizedEmail, {
               name: full_name || undefined,
               number: phone || undefined,
             });
           } catch {
+            return;
           }
         }
       } else {
@@ -45,11 +52,11 @@ export default function BasicInfo() {
         await api.createPatientBasic({
           name: full_name,
           number: phone,
-          email: email || undefined,
+          email: normalizedEmail,
         });
       }
       nav("/info");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setErr(String(e));
     }
   }
@@ -73,7 +80,8 @@ export default function BasicInfo() {
             onChange={(e) => setPhone(e.target.value)}
           />
           <input
-            placeholder="Email (optional)"
+            placeholder="Email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={tryPrefill}

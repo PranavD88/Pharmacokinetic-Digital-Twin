@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { api, type SharedSimulationDetail, type SharedSimulationSummary } from "../api";
 import Navbar from "./Navbar";
-import { downloadSimulationPDF } from "./SimPDFExport";
+import { downloadSimulationPDF, generateSimulationPDFBlob } from "./SimPDFExport";
 
 export default function PatientSimulations() {
   const nav = useNavigate();
@@ -21,6 +21,9 @@ export default function PatientSimulations() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [emailingPdf, setEmailingPdf] = useState(false);
+  const [pdfEmailMsg, setPdfEmailMsg] = useState("");
+  const [pdfEmail, setPdfEmail] = useState(localStorage.getItem("patient_email") || "");
   const chartRef = useRef<HTMLDivElement>(null);
   const token = localStorage.getItem("patient_token") || "";
 
@@ -36,7 +39,7 @@ export default function PatientSimulations() {
         setRows(data);
         if (data.length > 0) setSelectedId(data[0].id);
       })
-      .catch((e: any) => setErr(String(e)))
+      .catch((e: unknown) => setErr(String(e)))
       .finally(() => setLoading(false));
   }, [nav, token]);
 
@@ -48,7 +51,7 @@ export default function PatientSimulations() {
     api
       .getMySharedSimulation(token, selectedId)
       .then(setDetail)
-      .catch((e: any) => setErr(String(e)));
+      .catch((e: unknown) => setErr(String(e)));
   }, [selectedId, token]);
 
   const chartData = useMemo(
@@ -70,11 +73,38 @@ export default function PatientSimulations() {
   // ── PDF handler ────────────────────────────────────────────────────────────
   const handleDownloadPDF = async () => {
     if (!detail) return;
+    setPdfEmailMsg("");
     setPdfLoading(true);
     try {
       await downloadSimulationPDF(detail, chartRef);
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const handleEmailPDF = async () => {
+    if (!detail) return;
+    if (!token) {
+      setPdfEmailMsg("Session expired. Please log in again.");
+      return;
+    }
+
+    const targetEmail = pdfEmail.trim().toLowerCase();
+    if (!targetEmail) {
+      setPdfEmailMsg("Enter an email address first.");
+      return;
+    }
+
+    setPdfEmailMsg("");
+    setEmailingPdf(true);
+    try {
+      const pdfBlob = await generateSimulationPDFBlob(detail, chartRef);
+      await api.emailSharedSimulationReport(token, detail.id, targetEmail, pdfBlob);
+      setPdfEmailMsg(`PDF report emailed to ${targetEmail}.`);
+    } catch (e: unknown) {
+      setPdfEmailMsg(`Failed to email PDF: ${String(e)}`);
+    } finally {
+      setEmailingPdf(false);
     }
   };
 
@@ -194,14 +224,22 @@ export default function PatientSimulations() {
             </ResponsiveContainer>
           </div>
 
-          {/* ── Download button ── */}
-          <button
-            onClick={handleDownloadPDF}
-            disabled={pdfLoading}
-            style={{ marginTop: "1rem" }}
-          >
-            {pdfLoading ? "Generating PDF..." : "⬇ Download PDF Report"}
-          </button>
+          <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button onClick={handleDownloadPDF} disabled={pdfLoading || emailingPdf}>
+              {pdfLoading ? "Generating PDF..." : "Download PDF Report"}
+            </button>
+            <input
+              type="email"
+              placeholder="email for PDF"
+              value={pdfEmail}
+              onChange={(e) => setPdfEmail(e.target.value)}
+              style={{ minWidth: "230px", flex: "1 1 230px" }}
+            />
+            <button onClick={handleEmailPDF} disabled={emailingPdf || pdfLoading}>
+              {emailingPdf ? "Emailing PDF..." : "Email PDF Report"}
+            </button>
+          </div>
+          {pdfEmailMsg && <p style={{ marginTop: "0.5rem" }}>{pdfEmailMsg}</p>}
         </>
       )}
     </div>

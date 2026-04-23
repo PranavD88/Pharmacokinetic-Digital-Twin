@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://medical-ai-digital-twin.onrender.com";
 
 // Helper to parse JSON or throw the response text
 const J = async (r: Response) =>
@@ -112,6 +114,12 @@ export type WindowReview = {
   updated_at?: string | null;
 };
 
+export type AcceptSimulationPayload = {
+  patient_id: string;
+  medication_id: string;
+  simulation_id: string;
+};
+
 // API object
 
 //potential new code
@@ -123,7 +131,7 @@ export type PatientLoginResponse =
   | {
       requires_otp: true;
       email: string;
-      status: "otp_sent";
+      status: "phone_otp_sent";
       firstLogin: boolean;
     };
 
@@ -141,14 +149,31 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     }).then(J) as Promise<
-      | { requires2FA: true; email: string; message: string }
+      | {
+          firstLogin: true;
+          email: string;
+          requires_otp: true;
+          status: "phone_otp_sent";
+        }
       | { access_token: string; token_type: string }
     >,
+  verifyPatient2FA: (email: string, password: string) =>
+    fetch(`${BASE}/patient-login/verify-2fa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then(J) as Promise<{ access_token: string; token_type: string }>,
+  setPatientPassword: (email: string, password: string) =>
+    fetch(`${BASE}/patient-login/set-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then(J) as Promise<{ message: string }>,
 
   // Patients
   listPatients: () => fetch(`${BASE}/patients/`).then(J),
 
-  createPatientBasic: (body: { name: string; number: string; email?: string }) =>
+  createPatientBasic: (body: { name: string; number: string; email: string }) =>
     fetch(`${BASE}/patients/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -260,6 +285,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(J),
+  acceptSimulation: (body: AcceptSimulationPayload) =>
+    fetch(`${BASE}/sims/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(J),
   shareSimulation: (
     simulationId: string,
     payload: { patient_email: string; clinician_email: string }
@@ -277,4 +308,24 @@ export const api = {
     fetch(`${BASE}/sims/me/shared/${encodeURIComponent(simulationId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(J) as Promise<SharedSimulationDetail>,
+  emailSharedSimulationReport: (
+    token: string,
+    simulationId: string,
+    toEmail: string,
+    pdfBlob: Blob,
+    subject?: string,
+    body?: string
+  ) => {
+    const form = new FormData();
+    form.append("to_email", toEmail);
+    if (subject?.trim()) form.append("subject", subject.trim());
+    if (body?.trim()) form.append("body", body.trim());
+    form.append("pdf_file", pdfBlob, `simulation-${simulationId}.pdf`);
+
+    return fetch(`${BASE}/sims/me/shared/${encodeURIComponent(simulationId)}/email-report`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    }).then(J) as Promise<{ ok: boolean; sent_to: string }>;
+  },
 };

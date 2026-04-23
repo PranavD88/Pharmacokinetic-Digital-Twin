@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
-import random, os
-from twilio.rest import Client
+import random
 
 from ...core.db import get_session
 from ...core.patient_auth import create_patient_token
@@ -12,18 +11,6 @@ from ...voice import call_with_otp
 
 router = APIRouter(prefix="/patient-login", tags=["patient-login"])
 
-
-def send_sms(to_phone: str, message: str):
-    client = Client(
-        os.getenv("TWILIO_ACCOUNT_SID"),
-        os.getenv("TWILIO_AUTH_TOKEN")
-    )
-
-    client.messages.create(
-        body=message,
-        from_=os.getenv("TWILIO_PHONE_NUMBER"),
-        to=to_phone
-    )
 
 def _find_patient_by_email(session: Session, email: str) -> Patient | None:
     target = email.strip().lower()
@@ -40,15 +27,15 @@ def _find_patient_by_email(session: Session, email: str) -> Patient | None:
 
 def _find_user_by_email(session: Session, email: str) -> User | None:
     target = email.strip().lower()
-    users = session.query(User).all()
+    users = session.exec(select(User)).all()
 
     for user in users:
         try:
-            decrypted_email = decryptData(user.email)
-            if decrypted_email == email:
-                return user
-        except:
-            continue
+            decrypted_email = decryptData(user.email).strip().lower()
+        except Exception:
+            decrypted_email = str(user.email).strip().lower()
+        if decrypted_email == target:
+            return user
 
     return None
 
@@ -77,7 +64,7 @@ def patient_login(data: LoginRequest, session: Session = Depends(get_session)):
 
         session.add(user)
         session.commit()
-        print("Raw Phone Value:", patient.number)
+
         if not patient.number:
             raise HTTPException(status_code=400, detail="No phone number on file")
 

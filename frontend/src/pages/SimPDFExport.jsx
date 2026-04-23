@@ -38,7 +38,7 @@ function formatParamValue(v) {
   return String(v);
 }
 
-export async function downloadSimulationPDF(sim, chartRef) {
+async function buildSimulationPDF(sim, chartRef) {
   const pdf   = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -327,5 +327,15 @@ export async function downloadSimulationPDF(sim, chartRef) {
     );
   }
 
+  return pdf;
+}
+
+export async function downloadSimulationPDF(sim, chartRef) {
+  const pdf = await buildSimulationPDF(sim, chartRef);
   pdf.save(`simulation_${sim.medication_name ?? sim.id ?? "report"}.pdf`);
+}
+
+export async function generateSimulationPDFBlob(sim, chartRef) {
+  const pdf = await buildSimulationPDF(sim, chartRef);
+  return pdf.output("blob");
 }

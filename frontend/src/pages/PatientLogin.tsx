@@ -28,7 +28,7 @@ export default function PatientLogin() {
       }
 
       setErr("Unexpected response from server");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setErr(String(e));
     }
   }

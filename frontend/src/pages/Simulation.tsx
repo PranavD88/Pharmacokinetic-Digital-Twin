@@ -101,6 +101,16 @@ type SimulationResult = {
   conc_mg_per_L: number[];
 };
 
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage;
+  }
+  return fallback;
+}
+
 export default function Simulation() {
   const location = useLocation();
   const { patientId: initialPatientId, medicationId: initialMedId } =
@@ -181,7 +191,7 @@ export default function Simulation() {
           setSelectedMedId(ms[0].id);
         }
       })
-      .catch((e: any) => {
+      .catch((e: unknown) => {
         console.error(e);
         setError("Failed to load medications.");
       });
@@ -273,11 +283,9 @@ export default function Simulation() {
       setNewMedWinHigh("");
       setNewMedSourceUrl("");
       setShowNewMed(false);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setNewMedErr(
-        typeof e === "string" ? e : e?.message || "Failed to create medication."
-      );
+      setNewMedErr(toErrorMessage(e, "Failed to create medication."));
     } finally {
       setSavingMed(false);
     }
@@ -305,8 +313,8 @@ export default function Simulation() {
 
       const data = (await api.runSimulation(payload)) as SimulationResult;
       setResults((prev) => [...prev, data]);
-    } catch (e: any) {
-      setError(typeof e === "string" ? e : e?.message || "Failed to run simulation");
+    } catch (e: unknown) {
+      setError(toErrorMessage(e, "Failed to run simulation"));
     } finally {
       setLoading(false);
     }
@@ -314,26 +322,14 @@ export default function Simulation() {
 
   const handleAccept = async (sim: SimulationResult) => {
     try {
-      /*await fetch(
-        `/api/sims/accept?patient_id=${sim.patient_id}&medication_id=${sim.medication_id}&simulation_id=${sim.id}`,
-       {
-          method: "POST",
-        }
-      );*/
-      await fetch("http://localhost:8000/sims/accept", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          patient_id: sim.patient_id,
-          medication_id: sim.medication_id,
-          simulation_id: sim.id,
-        }),
+      await api.acceptSimulation({
+        patient_id: sim.patient_id,
+        medication_id: sim.medication_id,
+        simulation_id: sim.id,
       });
 
       alert("Simulation accepted!");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       alert("Failed to accept simulation");
     }
@@ -363,8 +359,8 @@ export default function Simulation() {
         clinician_email: clinicianEmail,
       });
       setShareMsg("Simulation shared successfully.");
-    } catch (e: any) {
-      setShareMsg(typeof e === "string" ? e : e?.message || "Failed to share simulation.");
+    } catch (e: unknown) {
+      setShareMsg(toErrorMessage(e, "Failed to share simulation."));
     } finally {
       setShareBusy(false);
     }
@@ -404,8 +400,8 @@ export default function Simulation() {
       if (!stillSelected && refreshed.length > 0) {
         setSelectedMedId(refreshed[0].id);
       }
-    } catch (e: any) {
-      setEditMedErr(typeof e === "string" ? e : e?.message || "Failed to update medication.");
+    } catch (e: unknown) {
+      setEditMedErr(toErrorMessage(e, "Failed to update medication."));
     } finally {
       setUpdatingMed(false);
     }
@@ -435,8 +431,8 @@ export default function Simulation() {
         setSelectedMedId("");
       }
       setShowEditMed(false);
-    } catch (e: any) {
-      setEditMedErr(typeof e === "string" ? e : e?.message || "Failed to delete medication.");
+    } catch (e: unknown) {
+      setEditMedErr(toErrorMessage(e, "Failed to delete medication."));
     } finally {
       setDeletingMed(false);
     }
@@ -469,8 +465,8 @@ export default function Simulation() {
           setWindowReview(review);
         }
       }
-    } catch (e: any) {
-      setError(typeof e === "string" ? e : e?.message || "Failed to fetch PK data");
+    } catch (e: unknown) {
+      setError(toErrorMessage(e, "Failed to fetch PK data"));
     } finally {
       setFetchingPk(false);
     }
@@ -483,8 +479,8 @@ export default function Simulation() {
       const row = await api.approveMedicationWindowReview(selectedMedId);
       setWindowReview(row);
       setShowRejectForm(false);
-    } catch (e: any) {
-      setError(typeof e === "string" ? e : e?.message || "Failed to approve window");
+    } catch (e: unknown) {
+      setError(toErrorMessage(e, "Failed to approve window"));
     } finally {
       setReviewBusy(false);
     }
@@ -510,8 +506,8 @@ export default function Simulation() {
       setManualLow("");
       setManualHigh("");
       setRejectNotes("");
-    } catch (e: any) {
-      setError(typeof e === "string" ? e : e?.message || "Failed to reject window");
+    } catch (e: unknown) {
+      setError(toErrorMessage(e, "Failed to reject window"));
     } finally {
       setReviewBusy(false);
     }

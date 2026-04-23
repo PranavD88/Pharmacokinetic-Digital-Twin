@@ -4,16 +4,16 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlmodel import Session, select
 
 from app.models import AcceptedSimulation
-from sqlmodel import Session, select
 
 from ...core.db import get_session
 from ...core.patient_auth import get_current_patient
 from ...core.security import decryptData
+from ...email import send_email_with_attachment
 from ...models import (
     Clinician,
     Condition,
@@ -124,6 +124,12 @@ class SharedSimulationDetail(SharedSimulationSummary):
     conc_mg_per_L: List[float]
     patient_context: Dict[str, Any]
     ade_screening: Dict[str, Any]
+
+
+class AcceptSimulationRequest(BaseModel):
+    patient_id: UUID
+    medication_id: UUID
+    simulation_id: UUID
 
 
 def _parse_uuid(value: str, detail: str) -> UUID:
@@ -425,22 +431,92 @@ def get_shared_simulation_for_patient(
     med = session.get(Medication, sim.medication_id)
     return _shared_payload(sim, med.name if med else None)
 
+
+@router.post("/me/shared/{simulation_id}/email-report")
+def email_shared_simulation_report(
+    simulation_id: str,
+    to_email: EmailStr = Form(...),
+    subject: Optional[str] = Form(None),
+    body: Optional[str] = Form(None),
+    pdf_file: UploadFile = File(...),
+    user: dict = Depends(get_current_patient),
+    session: Session = Depends(get_session),
+):
+    patient_id = _parse_uuid(user["patient_id"], "Invalid patient token")
+    sim_id = _parse_uuid(simulation_id, "Invalid simulation ID")
+
+    patient = session.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    sim = session.get(Simulation, sim_id)
+    if not sim or str(sim.patient_id) != str(patient.id):
+        raise HTTPException(status_code=404, detail="Simulation not found")
+
+    sim_results: Dict[str, Any] = sim.sim_results or {}
+    shared_meta = sim_results.get("shared") or {}
+    if not shared_meta.get("sent"):
+        raise HTTPException(status_code=403, detail="Simulation is not shared")
+
+    if pdf_file.content_type not in {"application/pdf", "application/octet-stream"}:
+        raise HTTPException(status_code=400, detail="pdf_file must be a PDF")
+
+    payload = pdf_file.file.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="pdf_file is empty")
+    if len(payload) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="pdf_file exceeds 10MB limit")
+
+    medication = session.get(Medication, sim.medication_id)
+    med_name = medication.name if medication else "Simulation"
+    default_subject = f"PK Simulation Report - {med_name}"
+    default_body = (
+        "Attached is your pharmacokinetic simulation report PDF.\n\n"
+        "If you did not request this report, contact your care team."
+    )
+
+    try:
+        send_email_with_attachment(
+            to_email=str(to_email),
+            subject=(subject or default_subject).strip(),
+            body=(body or default_body).strip(),
+            attachment_filename=pdf_file.filename or f"simulation-{sim.id}.pdf",
+            attachment_bytes=payload,
+            attachment_mime_type="application/pdf",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {exc}")
+
+    return {"ok": True, "sent_to": str(to_email)}
+
+
 @router.post("/accept")
 def accept_simulation(
-    patient_id: UUID,
-    medication_id: UUID,
-    simulation_id: UUID,
+    patient_id: Optional[UUID] = None,
+    medication_id: Optional[UUID] = None,
+    simulation_id: Optional[UUID] = None,
+    payload: Optional[AcceptSimulationRequest] = Body(default=None),
     session: Session = Depends(get_session)
 ):
+    resolved_patient_id = patient_id or (payload.patient_id if payload else None)
+    resolved_medication_id = medication_id or (payload.medication_id if payload else None)
+    resolved_simulation_id = simulation_id or (payload.simulation_id if payload else None)
+
+    if not resolved_patient_id or not resolved_medication_id or not resolved_simulation_id:
+        raise HTTPException(
+            status_code=422,
+            detail="patient_id, medication_id, and simulation_id are required",
+        )
+
     existing = session.exec(
         select(AcceptedSimulation).where(
-            AcceptedSimulation.patient_id == patient_id,
-            AcceptedSimulation.medication_id == medication_id
+            AcceptedSimulation.patient_id == resolved_patient_id,
+            AcceptedSimulation.medication_id == resolved_medication_id
         )
     ).first()
 
     if existing:
-        existing.simulation_id = simulation_id
+        existing.simulation_id = resolved_simulation_id
         existing.accepted_at = datetime.now()
         session.add(existing)
         session.commit()
@@ -448,9 +524,9 @@ def accept_simulation(
         return existing
 
     accepted = AcceptedSimulation(
-        patient_id=patient_id,
-        medication_id=medication_id,
-        simulation_id=simulation_id
+        patient_id=resolved_patient_id,
+        medication_id=resolved_medication_id,
+        simulation_id=resolved_simulation_id
     )
 
     session.add(accepted)
